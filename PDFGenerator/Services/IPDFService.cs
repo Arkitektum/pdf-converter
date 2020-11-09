@@ -5,6 +5,6 @@ namespace PDFGenerator.Services
 {
     public interface IPDFService
     {
-        Task<FileContentResult> GeneratePDFAsync(string url);
+        Task<byte[]> GeneratePdfAsync(string htmlData);
     }
 }

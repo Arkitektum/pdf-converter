@@ -2,6 +2,7 @@
 using System.IO;
 using System.Net.Http;
 using System.Net.WebSockets;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
@@ -32,49 +33,22 @@ namespace PDFGenerator.Services
             _logger = logger;
         }
 
-        public async Task<FileContentResult> GeneratePDFAsync(string url)
+        public async Task<byte[]> GeneratePdfAsync(string htmlData)
         {
-            var tempOutputPath = GetTempOutputPath();
-
-            try
-            {
-                await GeneratePdfAsync(url, tempOutputPath);
-
-                var fileContentResult = GetPDFFromDisk(tempOutputPath);
-
-                DeleteFile(tempOutputPath);
-
-                return fileContentResult;
-            }
-            catch (Exception exception)
-            {
-                _logger.LogError(exception, "Could not generate PDF!");
-                DeleteFile(tempOutputPath);
-
-                return null;
-            }
-        }
-
-        private async Task GeneratePdfAsync(string url, string outputPath)
-        {
+            byte[] pdfDoc = Encoding.UTF8.GetBytes("");
             try
             {
                 var connectOptions = new ConnectOptions
                 {
                     BrowserWSEndpoint = await GetWebSocketDebuggerUrl()
                 };
-
                 var browser = await Puppeteer.ConnectAsync(connectOptions);
 
                 using (var page = await browser.NewPageAsync())
                 {
-                    await page.GoToAsync(url, new NavigationOptions
-                    {
-                        Timeout = 0,
-                        WaitUntil = new[] { WaitUntilNavigation.Networkidle2 }
-                    });
-
-                    await page.PdfAsync(outputPath, new PdfOptions
+                    await page.SetContentAsync(htmlData);
+                    
+                    var pdfOp = new PdfOptions
                     {
                         Width = _pdfServiceConfig.PaperWidth,
                         Height = _pdfServiceConfig.PaperHeight,
@@ -86,14 +60,18 @@ namespace PDFGenerator.Services
                             Left = _pdfServiceConfig.MarginLeft
                         },
                         PrintBackground = true
-                    });
+                    };
+                    pdfDoc = await page.PdfDataAsync(pdfOp);
                 }
 
                 browser.Disconnect();
+
+                return pdfDoc;
             }
             catch (Exception exception)
             {
                 _logger.LogError(exception, "Puppeteer could not generate PDF");
+                throw exception;
             }
         }
 

@@ -24,15 +24,15 @@ namespace PDFGenerator.Controllers
         {
             try
             {
-                var fileContentResult = await _pdfService.GeneratePDFAsync(options.Url);
-                var escapedFileName = Uri.EscapeDataString(options.Filename);
-
-                Response.Headers.Add("content-disposition", $"attachment; filename={escapedFileName}");
-
-                return fileContentResult;
+                var pdfDoc = await _pdfService.GeneratePdfAsync(options.HtmlData);
+                Console.WriteLine($"Content-length: {pdfDoc.Length}");
+                Response.Headers.Add("Content-Type", "application/pdf");
+                Response.Headers.Add("Content-Length", pdfDoc.Length.ToString());
+                return File(pdfDoc, "application/pdf");
             }
-            catch (Exception)
+            catch (Exception ex)
             {
+                Console.WriteLine($"Exception: {ex.Message}");
                 return StatusCode(StatusCodes.Status500InternalServerError);
             }
         }
