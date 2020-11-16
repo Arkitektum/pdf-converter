@@ -1,10 +1,14 @@
+using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
-using Microsoft.AspNetCore.Mvc.Formatters;
+using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using PDFGenerator.Security;
 using PDFGenerator.Services;
+using System.Threading.Tasks;
 
 namespace PDFGenerator
 {
@@ -30,8 +34,31 @@ namespace PDFGenerator
             services.AddMemoryCache();
 
             services.AddTransient<IPDFService, PDFService>();
-
             services.Configure<PDFServiceConfig>(Configuration.GetSection(PDFServiceConfig.SectionName));
+            services.Configure<AuthenticationConfig>(Configuration.GetSection(AuthenticationConfig.SectionName));
+            
+            services.AddTransient<IHttpContextAccessor, HttpContextAccessor> ();
+            services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
+                    .AddCookie(CookieAuthenticationDefaults.AuthenticationScheme,
+                    options =>
+                    {
+                        options.Events.OnRedirectToLogin = ctx =>
+                        {
+                            ctx.Response.StatusCode = 401;
+                            return Task.CompletedTask;
+                        };
+                    });
+            
+            var authenticationConfig = Configuration.GetSection(AuthenticationConfig.SectionName);
+            string apiKey = authenticationConfig.GetSection("ApiKey").Value;
+            services.AddTransient<IAuthorizationHandler, ApiKeyRequirementHandler>();
+            services.AddAuthorization(authConfig =>
+            {
+                authConfig.AddPolicy("ApiKeyPolicy",
+                    policyBuilder => policyBuilder
+                        .AddRequirements(new ApiKeyRequirement(new[] { apiKey })));
+        });
+            
         }
 
         public void Configure(IApplicationBuilder app, IWebHostEnvironment env)
@@ -51,7 +78,6 @@ namespace PDFGenerator
             app.UseHttpsRedirection();
 
             app.UseRouting();
-
             app.UseAuthorization();
 
             app.UseEndpoints(endpoints =>
