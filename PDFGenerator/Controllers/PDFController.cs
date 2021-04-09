@@ -1,10 +1,10 @@
-﻿using System;
-using System.Threading.Tasks;
-using Microsoft.AspNetCore.Authorization;
+﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using PDFGenerator.Models;
 using PDFGenerator.Services;
+using System;
+using System.Threading.Tasks;
 
 namespace PDFGenerator.Controllers
 {
@@ -14,7 +14,8 @@ namespace PDFGenerator.Controllers
     {
         private readonly IPDFService _pdfService;
 
-        public PDFController(IPDFService pdfService)
+        public PDFController(
+            IPDFService pdfService)
         {
             _pdfService = pdfService;
         }
@@ -25,14 +26,15 @@ namespace PDFGenerator.Controllers
         {
             try
             {
-                var pdfDoc = await _pdfService.GeneratePdfAsync(options.HtmlData);
+                var pdfData = await _pdfService.GeneratePDFAsync(options);
+
                 Response.Headers.Add("Content-Type", "application/pdf");
-                Response.Headers.Add("Content-Length", pdfDoc.Length.ToString());
-                return File(pdfDoc, "application/pdf");
+                Response.Headers.Add("Content-Length", pdfData.Length.ToString());
+
+                return File(pdfData, "application/pdf", options.FileName ?? $"{Guid.NewGuid()}.pdf");
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                Console.WriteLine($"Exception: {ex.Message}");
                 return StatusCode(StatusCodes.Status500InternalServerError);
             }
         }

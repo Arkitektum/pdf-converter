@@ -24,7 +24,6 @@ namespace PDFGenerator
                 .AddJsonFile($"appsettings.{env.EnvironmentName}.json", true)
                 .AddEnvironmentVariables()
                 .Build();
-
         }
 
         public void ConfigureServices(IServiceCollection services)
@@ -33,32 +32,30 @@ namespace PDFGenerator
             services.AddSwaggerGen();
             services.AddMemoryCache();
 
+            services.AddTransient<IHttpContextAccessor, HttpContextAccessor>();
             services.AddTransient<IPDFService, PDFService>();
-            services.Configure<PDFServiceConfig>(Configuration.GetSection(PDFServiceConfig.SectionName));
-            services.Configure<AuthenticationConfig>(Configuration.GetSection(AuthenticationConfig.SectionName));
-            
-            services.AddTransient<IHttpContextAccessor, HttpContextAccessor> ();
-            services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
-                    .AddCookie(CookieAuthenticationDefaults.AuthenticationScheme,
-                    options =>
-                    {
-                        options.Events.OnRedirectToLogin = ctx =>
-                        {
-                            ctx.Response.StatusCode = 401;
-                            return Task.CompletedTask;
-                        };
-                    });
-            
-            var authenticationConfig = Configuration.GetSection(AuthenticationConfig.SectionName);
-            string apiKey = authenticationConfig.GetSection("ApiKey").Value;
             services.AddTransient<IAuthorizationHandler, ApiKeyRequirementHandler>();
-            services.AddAuthorization(authConfig =>
+
+            services.Configure<PDFServiceConfig>(Configuration.GetSection(PDFServiceConfig.SectionName));
+
+            services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
+                .AddCookie(CookieAuthenticationDefaults.AuthenticationScheme, options =>
+                {
+                    options.Events.OnRedirectToLogin = ctx =>
+                    {
+                        ctx.Response.StatusCode = 401;
+                        return Task.CompletedTask;
+                    };
+                });
+
+            var authenticationConfig = Configuration.GetSection(AuthenticationConfig.SectionName);
+            var apiKey = authenticationConfig.GetSection("ApiKey").Value;
+
+            services.AddAuthorization(options =>
             {
-                authConfig.AddPolicy("ApiKeyPolicy",
-                    policyBuilder => policyBuilder
-                        .AddRequirements(new ApiKeyRequirement(new[] { apiKey })));
-        });
-            
+                options.AddPolicy("ApiKeyPolicy",
+                    policyBuilder => policyBuilder.AddRequirements(new ApiKeyRequirement(new[] { apiKey })));
+            });
         }
 
         public void Configure(IApplicationBuilder app, IWebHostEnvironment env)
@@ -67,7 +64,7 @@ namespace PDFGenerator
 
             app.UseSwaggerUI(options =>
             {
-                options.SwaggerEndpoint("/swagger/v1/swagger.json", "PDF Generator API V1");
+                options.SwaggerEndpoint("/swagger/v1/swagger.json", "PDF Generator API v1");
             });
 
             if (env.IsDevelopment())
@@ -75,9 +72,10 @@ namespace PDFGenerator
                 app.UseDeveloperExceptionPage();
             }
 
-            app.UseHttpsRedirection();
+            app.UseHttpsRedirection();            
 
             app.UseRouting();
+
             app.UseAuthorization();
 
             app.UseEndpoints(endpoints =>

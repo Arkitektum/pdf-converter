@@ -1,17 +1,15 @@
-﻿using System;
-using System.IO;
-using System.Net.Http;
-using System.Net.WebSockets;
-using System.Text;
-using System.Threading;
-using System.Threading.Tasks;
-using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Caching.Memory;
+﻿using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Newtonsoft.Json.Linq;
+using PDFGenerator.Models;
 using PuppeteerSharp;
 using PuppeteerSharp.Media;
+using System;
+using System.Net.Http;
+using System.Net.WebSockets;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace PDFGenerator.Services
 {
@@ -33,56 +31,58 @@ namespace PDFGenerator.Services
             _logger = logger;
         }
 
-        public async Task<byte[]> GeneratePdfAsync(string htmlData)
+        public async Task<byte[]> GeneratePDFAsync(PDFGenerationOptions options)
         {
-            byte[] pdfDoc = Encoding.UTF8.GetBytes("");
             try
             {
-                var connectOptions = new ConnectOptions
-                {
-                    BrowserWSEndpoint = await GetWebSocketDebuggerUrl()
-                };
+                return await GeneratePdfAsync(options);
+            }
+            catch (Exception exception)
+            {
+                _logger.LogError(exception, "Could not generate PDF!");
+
+                return null;
+            }
+        }
+
+        private async Task<byte[]> GeneratePdfAsync(PDFGenerationOptions options)
+        {
+            try
+            {
+                byte[] pdfData = null;
+                var connectOptions = new ConnectOptions { BrowserWSEndpoint = await GetWebSocketDebuggerUrl() };
                 var browser = await Puppeteer.ConnectAsync(connectOptions);
 
                 using (var page = await browser.NewPageAsync())
                 {
-                    await page.SetContentAsync(htmlData);
-                    
-                    var pdfOp = new PdfOptions
+                    await page.SetContentAsync(options.HtmlData);
+
+                    var pdfOptions = new PdfOptions
                     {
-                        Width = _pdfServiceConfig.PaperWidth,
-                        Height = _pdfServiceConfig.PaperHeight,
+                        Width = options.Paper.PaperWidth ?? _pdfServiceConfig.PaperWidth,
+                        Height = options.Paper.PaperHeight ?? _pdfServiceConfig.PaperHeight,
                         MarginOptions = new MarginOptions
                         {
-                            Top = _pdfServiceConfig.MarginTop,
-                            Right = _pdfServiceConfig.MarginRight,
-                            Bottom = _pdfServiceConfig.MarginBottom,
-                            Left = _pdfServiceConfig.MarginLeft
+                            Top = options.Paper.MarginTop ?? _pdfServiceConfig.MarginTop,
+                            Right = options.Paper.MarginRight ?? _pdfServiceConfig.MarginRight,
+                            Bottom = options.Paper.MarginBottom ?? _pdfServiceConfig.MarginBottom,
+                            Left = options.Paper.MarginLeft ?? _pdfServiceConfig.MarginLeft
                         },
                         PrintBackground = true
                     };
-                    pdfDoc = await page.PdfDataAsync(pdfOp);
+
+                    pdfData = await page.PdfDataAsync(pdfOptions);
                 }
 
                 browser.Disconnect();
 
-                return pdfDoc;
+                return pdfData;
             }
             catch (Exception exception)
             {
                 _logger.LogError(exception, "Puppeteer could not generate PDF");
-                throw exception;
+                throw;
             }
-        }
-
-        private static FileContentResult GetPDFFromDisk(string path)
-        {
-            if (!File.Exists(path))
-                throw new FileNotFoundException();
-
-            var file = File.ReadAllBytes(path);
-
-            return new FileContentResult(file, "application/pdf");
         }
 
         private async Task<string> GetWebSocketDebuggerUrl()
@@ -143,25 +143,6 @@ namespace PDFGenerator.Services
                 _logger.LogInformation("WebSocket Debugger URL tested NOT OK! ");
                 return false;
             }
-        }
-
-        private void DeleteFile(string path)
-        {
-            try
-            {
-                if (File.Exists(path))
-                    File.Delete(path);
-            }
-            catch (Exception exception)
-            {
-                _logger.LogError(exception, $"Kunne ikke slette filen {path}");
-                throw;
-            }
-        }
-
-        private static string GetTempOutputPath()
-        {
-            return Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid()}.pdf");
         }
     }
 }

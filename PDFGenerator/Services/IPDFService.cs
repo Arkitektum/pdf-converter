@@ -1,9 +1,10 @@
-﻿using System.Threading.Tasks;
+﻿using PDFGenerator.Models;
+using System.Threading.Tasks;
 
 namespace PDFGenerator.Services
 {
     public interface IPDFService
     {
-        Task<byte[]> GeneratePdfAsync(string htmlData);
+        Task<byte[]> GeneratePDFAsync(PDFGenerationOptions options);
     }
 }
