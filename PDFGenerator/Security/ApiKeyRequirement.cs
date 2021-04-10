@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 
-namespace PDFGenerator.Security
+namespace PdfGenerator.Security
 {
     public class ApiKeyRequirement : IAuthorizationRequirement
     {

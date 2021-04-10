@@ -1,6 +1,6 @@
-﻿namespace PDFGenerator.Services
+﻿namespace PdfGenerator.Services
 {
-    public class PDFServiceConfig
+    public class PdfServiceConfig
     {
         public static string SectionName => "PDFServiceConfig";
         public string ChromiumVersionUrl { get; set; }

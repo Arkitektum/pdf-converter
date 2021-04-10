@@ -3,7 +3,7 @@ FROM mcr.microsoft.com/dotnet/sdk:5.0-buster-slim AS build
 
 WORKDIR /
 COPY *.sln .
-COPY PDFGenerator/. ./PDFGenerator/
+COPY PdfGenerator/. ./PdfGenerator/
 
 RUN dotnet build -c Release -o /app_output
 RUN dotnet publish -c Release -o /app_output

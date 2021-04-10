@@ -4,7 +4,7 @@ using System;
 using System.Linq;
 using System.Threading.Tasks;
 
-namespace PDFGenerator.Security
+namespace PdfGenerator.Security
 {
     public class ApiKeyRequirementHandler : AuthorizationHandler<ApiKeyRequirement>
     {

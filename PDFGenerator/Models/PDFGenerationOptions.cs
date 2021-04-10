@@ -1,6 +1,6 @@
-﻿namespace PDFGenerator.Models
+﻿namespace PdfGenerator.Models
 {
-    public class PDFGenerationOptions
+    public class PdfGenerationOptions
     {
         public string HtmlData { get; set; }
         public string FileName { get; set; }

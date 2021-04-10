@@ -6,11 +6,11 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
-using PDFGenerator.Security;
-using PDFGenerator.Services;
+using PdfGenerator.Security;
+using PdfGenerator.Services;
 using System.Threading.Tasks;
 
-namespace PDFGenerator
+namespace PdfGenerator
 {
     public class Startup
     {
@@ -30,13 +30,13 @@ namespace PDFGenerator
         {
             services.AddControllers();
             services.AddSwaggerGen();
-            services.AddMemoryCache();
 
+            services.AddSingleton<IBrowserProvider, BrowserProvider>();
             services.AddTransient<IHttpContextAccessor, HttpContextAccessor>();
-            services.AddTransient<IPDFService, PDFService>();
+            services.AddTransient<IPdfService, PdfService>();
             services.AddTransient<IAuthorizationHandler, ApiKeyRequirementHandler>();
 
-            services.Configure<PDFServiceConfig>(Configuration.GetSection(PDFServiceConfig.SectionName));
+            services.Configure<PdfServiceConfig>(Configuration.GetSection(PdfServiceConfig.SectionName));
 
             services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
                 .AddCookie(CookieAuthenticationDefaults.AuthenticationScheme, options =>

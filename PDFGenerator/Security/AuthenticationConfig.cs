@@ -1,4 +1,4 @@
-﻿namespace PDFGenerator.Security
+﻿namespace PdfGenerator.Security
 {
     public class AuthenticationConfig
     {
