@@ -24,12 +24,13 @@ namespace PdfGenerator.Services
             _logger = logger;
         }
 
-        public async Task<byte[]> GeneratePdfAsync(PdfGenerationOptions options)
+        public async Task<PdfFile> GeneratePdfAsync(PdfGenerationOptions options)
         {
             try
             {
-                byte[] pdfData = null;
-
+                byte[] pdfData;
+                var start = DateTime.Now;
+                var fileName = options.FileName ?? $"{Guid.NewGuid()}.pdf";
                 var browser = await _browserProvider.GetBrowser();
 
                 using (var page = await browser.NewPageAsync())
@@ -53,7 +54,14 @@ namespace PdfGenerator.Services
                     pdfData = await page.PdfDataAsync(pdfOptions);
                 }
 
-                return pdfData;
+                _logger.LogInformation($"Genererte PDF {fileName} ({Math.Round(pdfData.Length / 1024f, 2)} KB) på {Math.Round(DateTime.Now.Subtract(start).TotalSeconds, 2)} sek.");
+
+                return new PdfFile
+                {
+                    Data = pdfData,
+                    FileSize = pdfData.Length,
+                    FileName = options.FileName ?? $"{Guid.NewGuid()}.pdf"
+                };
             }
             catch (Exception exception)
             {

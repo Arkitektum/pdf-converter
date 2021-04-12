@@ -22,18 +22,21 @@ namespace PdfGenerator.Services
 
         public async Task<Browser> GetBrowser()
         {
-            if (_browser != null && _browser.IsConnected)
+            if (_browser?.IsConnected ?? false)
                 return _browser;
 
-            await ConnectToBrowser();
+            await Connect();
 
             return _browser;
         }
 
-        private async Task ConnectToBrowser()
+        private async Task Connect()
         {
             try
             {
+                if (_browser != null)
+                    await _browser.DisposeAsync();
+
                 _browser = await Puppeteer.ConnectAsync(new ConnectOptions { BrowserURL = _config.ChromiumVersionUrl });
                 _logger.LogInformation($"Koblet til nettleser: {_browser.WebSocketEndpoint}");
             }

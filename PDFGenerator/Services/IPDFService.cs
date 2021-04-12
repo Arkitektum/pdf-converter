@@ -5,6 +5,6 @@ namespace PdfGenerator.Services
 {
     public interface IPdfService
     {
-        Task<byte[]> GeneratePdfAsync(PdfGenerationOptions options);
+        Task<PdfFile> GeneratePdfAsync(PdfGenerationOptions options);
     }
 }

@@ -1,6 +1,7 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Logging;
 using PdfGenerator.Models;
 using PdfGenerator.Services;
 using System;
@@ -13,11 +14,14 @@ namespace PdfGenerator.Controllers
     public class PdfController : ControllerBase
     {
         private readonly IPdfService _pdfService;
+        private readonly ILogger<PdfController> _logger;
 
         public PdfController(
-            IPdfService pdfService)
+            IPdfService pdfService,
+            ILogger<PdfController> logger)
         {
             _pdfService = pdfService;
+            _logger = logger;
         }
 
         [HttpPost]
@@ -26,15 +30,20 @@ namespace PdfGenerator.Controllers
         {
             try
             {
-                var pdfData = await _pdfService.GeneratePdfAsync(options);
+                if (options?.HtmlData == null)
+                    return BadRequest();
 
-                Response.Headers.Add("Content-Type", "application/pdf");
-                Response.Headers.Add("Content-Length", pdfData.Length.ToString());
+                var pdfFile = await _pdfService.GeneratePdfAsync(options);
 
-                return File(pdfData, "application/pdf", options.FileName ?? $"{Guid.NewGuid()}.pdf");
+                Response.Headers.Add("Content-Type", PdfFile.ContentType);
+                Response.Headers.Add("Content-Length", pdfFile.FileSize.ToString());
+
+                return File(pdfFile.Data, PdfFile.ContentType, pdfFile.FileName);
             }
-            catch (Exception)
+            catch (Exception exception)
             {
+                _logger.LogError(exception, "En feil har oppstått!");
+
                 return StatusCode(StatusCodes.Status500InternalServerError);
             }
         }

@@ -6,8 +6,11 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 using PdfGenerator.Security;
 using PdfGenerator.Services;
+using Serilog;
+using Serilog.Events;
 using System.Threading.Tasks;
 
 namespace PdfGenerator
@@ -41,9 +44,9 @@ namespace PdfGenerator
             services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
                 .AddCookie(CookieAuthenticationDefaults.AuthenticationScheme, options =>
                 {
-                    options.Events.OnRedirectToLogin = ctx =>
+                    options.Events.OnRedirectToLogin = context =>
                     {
-                        ctx.Response.StatusCode = 401;
+                        context.Response.StatusCode = 401;
                         return Task.CompletedTask;
                     };
                 });
@@ -58,8 +61,16 @@ namespace PdfGenerator
             });
         }
 
-        public void Configure(IApplicationBuilder app, IWebHostEnvironment env)
+        public void Configure(IApplicationBuilder app, IWebHostEnvironment env, ILoggerFactory loggerFactory, IHostApplicationLifetime hostApplicationLifetime)
         {
+            Log.Logger = new LoggerConfiguration()
+                .MinimumLevel.Information()
+                .WriteTo.File("/logs/pdf-generator-.txt", rollingInterval: RollingInterval.Day)
+                .ReadFrom.Configuration(Configuration)
+                .CreateLogger();
+
+            loggerFactory.AddSerilog(Log.Logger, true);
+
             app.UseSwagger();
 
             app.UseSwaggerUI(options =>
@@ -82,6 +93,8 @@ namespace PdfGenerator
             {
                 endpoints.MapControllers();
             });
+
+            hostApplicationLifetime.ApplicationStopped.Register(Log.CloseAndFlush);
         }
     }
 }
