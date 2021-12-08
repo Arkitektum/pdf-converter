@@ -9,18 +9,18 @@ namespace PdfGenerator.Services
     public class BrowserProvider : IBrowserProvider
     {
         private Browser _browser;
-        private readonly PdfServiceConfig _config;
+        private readonly PdfSettings _config;
         private readonly ILogger<BrowserProvider> _logger;
 
         public BrowserProvider(
-            IOptions<PdfServiceConfig> options,
+            IOptions<PdfSettings> options,
             ILogger<BrowserProvider> logger)
         {
             _config = options.Value;
             _logger = logger;
         }
 
-        public async Task<Browser> GetBrowser()
+        public async Task<Browser> GetBrowserAsync()
         {
             if (_browser?.IsConnected ?? false)
                 return _browser;

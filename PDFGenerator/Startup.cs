@@ -10,7 +10,6 @@ using Microsoft.Extensions.Logging;
 using PdfGenerator.Security;
 using PdfGenerator.Services;
 using Serilog;
-using Serilog.Events;
 using System.Threading.Tasks;
 
 namespace PdfGenerator
@@ -39,7 +38,7 @@ namespace PdfGenerator
             services.AddTransient<IPdfService, PdfService>();
             services.AddTransient<IAuthorizationHandler, ApiKeyRequirementHandler>();
 
-            services.Configure<PdfServiceConfig>(Configuration.GetSection(PdfServiceConfig.SectionName));
+            services.Configure<PdfSettings>(Configuration.GetSection(PdfSettings.SectionName));
 
             services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
                 .AddCookie(CookieAuthenticationDefaults.AuthenticationScheme, options =>
