@@ -1,0 +1,11 @@
+{
+  "Version": 1,
+  "ProjectMap": {
+    "57d79f38-ca8e-44ac-88d1-5942e5d204dc": {
+      "ProjectGuid": "57d79f38-ca8e-44ac-88d1-5942e5d204dc",
+      "DisplayName": "PdfGenerator",
+      "ColorIndex": 0
+    }
+  },
+  "NextColorIndex": 1
+}
