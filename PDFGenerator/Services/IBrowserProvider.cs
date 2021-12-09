@@ -1,5 +1,4 @@
 ﻿using PuppeteerSharp;
-using System.Threading.Tasks;
 
 namespace PdfGenerator.Services
 {

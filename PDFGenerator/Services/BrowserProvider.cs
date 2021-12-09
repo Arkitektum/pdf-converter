@@ -1,8 +1,5 @@
-﻿using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
+﻿using Microsoft.Extensions.Options;
 using PuppeteerSharp;
-using System;
-using System.Threading.Tasks;
 
 namespace PdfGenerator.Services
 {
@@ -38,7 +35,7 @@ namespace PdfGenerator.Services
                     await _browser.DisposeAsync();
 
                 _browser = await Puppeteer.ConnectAsync(new ConnectOptions { BrowserURL = _config.ChromiumVersionUrl });
-                _logger.LogInformation($"Koblet til nettleser: {_browser.WebSocketEndpoint}");
+                _logger.LogInformation("Koblet til nettleser: {webSocketEndpoint}", _browser.WebSocketEndpoint);
             }
             catch (Exception exception)
             {

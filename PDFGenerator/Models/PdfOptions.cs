@@ -1,6 +1,6 @@
 ﻿namespace PdfGenerator.Models
 {
-    public class PdfCustomOptions
+    public class PdfOptions
     {
         public string PaperWidth { get; set; }
         public string PaperHeight { get; set; }

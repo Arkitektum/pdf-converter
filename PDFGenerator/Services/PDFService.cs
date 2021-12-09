@@ -1,16 +1,13 @@
 ﻿using Ionic.Zip;
-using Microsoft.AspNetCore.Http;
-using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using PdfGenerator.Exceptions;
 using PdfGenerator.Helpers;
 using PdfGenerator.Models;
 using PuppeteerSharp;
 using PuppeteerSharp.Media;
-using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using System.Threading.Tasks;
+using System.Text;
+using PdfOptions = PdfGenerator.Models.PdfOptions;
+using PuppeteerPdfOptions = PuppeteerSharp.PdfOptions;
 
 namespace PdfGenerator.Services
 {
@@ -30,99 +27,104 @@ namespace PdfGenerator.Services
             _logger = logger;
         }
 
-        public async Task<PdfFile> GeneratePdfFromHtmlStringAsync(string htmlString, PdfCustomOptions options)
+        public async Task<PdfResult> GeneratePdfFromHtmlStringAsync(string htmlString, PdfOptions options)
         {
             try
             {
-                byte[] pdfData;
                 var start = DateTime.Now;
-                var fileName = $"{Guid.NewGuid()}.pdf";
                 var browser = await _browserProvider.GetBrowserAsync();
 
-                using (var page = await browser.NewPageAsync())
+                using var page = await browser.NewPageAsync();
+                await page.SetContentAsync(htmlString);
+
+                var pdfOptions = GetPdfOptions(options);
+                var pdfStream = await page.PdfStreamAsync(pdfOptions);
+                var fileName = await CreateFileNameAsync(page);
+
+                _logger.LogInformation(@$"Genererte PDF ""{fileName}"" ({Math.Round(pdfStream.Length / 1024f / 1024f, 2)} MB) på {Math.Round(DateTime.Now.Subtract(start).TotalSeconds, 2)} sek.");
+
+                return new PdfResult
                 {
-                    await page.SetContentAsync(htmlString);
-
-                    var pdfOptions = GetPdfOptions(options);
-
-                    pdfData = await page.PdfDataAsync(pdfOptions);
-                }
-
-                _logger.LogInformation($"Genererte PDF {fileName} ({Math.Round(pdfData.Length / 1024f, 2)} KB) på {Math.Round(DateTime.Now.Subtract(start).TotalSeconds, 2)} sek.");
-
-                return new PdfFile
-                {
-                    Data = pdfData,
-                    FileSize = pdfData.Length,
-                    FileName = fileName
+                    FileName = fileName,
+                    Data = pdfStream
                 };
             }
             catch (Exception exception)
             {
-                _logger.LogError(exception, "Puppeteer kunne ikke generere PDF!");
+                _logger.LogError(exception, "Kunne ikke generere PDF fra HTML.");
                 throw;
             }
         }
 
-        public async Task<MemoryStream> GeneratePdfArchiveFromFilesAsync(List<IFormFile> files, PdfCustomOptions options)
+        public async Task<PdfResult> GeneratePdfFromFileAsync(IFormFile file, PdfOptions options)
         {
-            var taskList = new List<(string FileName, Task<Stream> PdfTask)>();
-
-            foreach (var file in files)
+            try
             {
-                var task = GeneratePdfStreamAsync(file, options);
+                var startTime = DateTime.Now;
+                var content = await GenerateContentAsync(file);
+                var browser = await _browserProvider.GetBrowserAsync();
 
-                if (task != null)
-                    taskList.Add((file.FileName, task));
+                using var page = await browser.NewPageAsync();              
+                await page.SetContentAsync(content);
+
+                var pdfOptions = GetPdfOptions(options);
+
+                if (ImageHelpers.IsImage(file))
+                {
+                    pdfOptions.Landscape = await ImageHelpers.IsLandscapeAsync(page);
+                    await ImageHelpers.SetImageSizeAsync(page, pdfOptions);
+                }
+
+                var pdfStream = await page.PdfStreamAsync(pdfOptions);
+                var fileName = $"{Path.GetFileNameWithoutExtension(file.FileName)}.pdf";
+                var logEntry = $@"Genererte PDF ""{fileName}"" ({Math.Round(pdfStream.Length / 1024f / 1024f, 2)} MB) av filen ""{file.FileName}"" på {Math.Round(DateTime.Now.Subtract(startTime).TotalSeconds, 2)} sek.";
+
+                _logger.LogInformation(logEntry);
+
+                return new PdfResult
+                {
+                    FileName = fileName,
+                    Data = pdfStream,
+                    Log = logEntry
+                };
             }
+            catch (Exception exception)
+            {
+                return new PdfResult
+                {
+                    Log = $@"Kunne ikke generere PDF av filen ""{file.FileName}"": {exception.Message}"
+                };
+            }
+        }
 
-            await Task.WhenAll(taskList.Select(task => task.PdfTask));
+        public async Task<MemoryStream> GeneratePdfZipFromFilesAsync(List<IFormFile> files, PdfOptions options)
+        {
+            var pdfTaskList = files.Select(file => GeneratePdfFromFileAsync(file, options));
 
+            await Task.WhenAll(pdfTaskList);
+            
             using var archive = new ZipFile();
+            var log = new List<string>();
 
-            foreach (var (FileName, PdfTask) in taskList)
+            foreach (var pdfTask in pdfTaskList)
             {
-                var stream = await PdfTask;
-                archive.AddEntry($"{Path.GetFileNameWithoutExtension(FileName)}.pdf", stream);
+                var pdfResult = await pdfTask;
+
+                if (pdfResult.Data != null)
+                    archive.AddEntry(pdfResult.FileName, pdfResult.Data);
+
+                log.Add(pdfResult.Log);
             }
+
+            archive.AddEntry("log.txt", await CreateLogStreamAsync(log));
 
             var memoryStream = new MemoryStream();
-
             archive.Save(memoryStream);
 
             return memoryStream;
         }
 
-        private async Task<Stream> GeneratePdfStreamAsync(IFormFile file, PdfCustomOptions options)
-        {
-            var content = await GenerateContentAsync(file);
-
-            if (content == null)
-                return null;
-
-            var start = DateTime.Now;
-            var fileName = $"{Path.GetFileNameWithoutExtension(file.FileName)}.pdf";
-            var browser = await _browserProvider.GetBrowserAsync();
-
-            using var page = await browser.NewPageAsync();
-            await page.SetContentAsync(content);
-
-            var pdfOptions = GetPdfOptions(options);
-
-            if (ImageHelpers.IsImage(file))
-            {
-                pdfOptions.Landscape = await ImageHelpers.IsLandscapeAsync(page);
-                await ImageHelpers.SetImageSizeAsync(page, pdfOptions);
-            }
-
-            var stream = await page.PdfStreamAsync(pdfOptions);
-
-            _logger.LogInformation($"Genererte PDF {fileName} ({Math.Round(stream.Length / 1024f, 2)} KB) på {Math.Round(DateTime.Now.Subtract(start).TotalSeconds, 2)} sek.");
-
-            return stream;
-        }
-
-        private PdfOptions GetPdfOptions(PdfCustomOptions options)
+        private PuppeteerPdfOptions GetPdfOptions(PdfOptions options)
         {
             return new()
             {
@@ -142,14 +144,14 @@ namespace PdfGenerator.Services
         private static async Task<string> GenerateContentAsync(IFormFile file)
         {
             if (file.ContentType == null)
-                return null;
+                throw new ContentTypeException("Filen mangler Content-Type.");
 
             if (file.ContentType == "text/html")
                 return await TemplatingHelper.StreamToStringAsync(file.OpenReadStream());
             else if (ImageHelpers.IsImage(file))
                 return await CreateImageHtmlAsync(file);
 
-            return null;
+            throw new ContentTypeException(@$"Filen har ugyldig Content-Type ""{file.ContentType}"".");
         }
 
         private static async Task<string> CreateImageHtmlAsync(IFormFile file)
@@ -163,6 +165,33 @@ namespace PdfGenerator.Services
             };
 
             return TemplatingHelper.FormatHtml(template, parameters);
+        }
+
+        private static async Task<Stream> CreateLogStreamAsync(IEnumerable<string> log)
+        {
+            var memoryStream = new MemoryStream();
+            using var streamWriter = new StreamWriter(memoryStream, Encoding.UTF8, leaveOpen: true);
+
+            foreach (var logEntry in log)
+                await streamWriter.WriteLineAsync(logEntry);
+
+            await streamWriter.FlushAsync();
+            memoryStream.Position = 0;
+
+            return memoryStream;
+        }
+
+        private static async Task<string> CreateFileNameAsync(Page page)
+        {
+            var pageTitle = await page.GetTitleAsync();
+
+            if (string.IsNullOrWhiteSpace(pageTitle))
+                return $"pdf-document-{DateTime.Now:yyyyMMddTHHmmss}.pdf";
+            
+            foreach (var c in Path.GetInvalidFileNameChars())
+                pageTitle = pageTitle.Replace(c, '_');
+
+            return $"{pageTitle}.pdf";
         }
     }
 }

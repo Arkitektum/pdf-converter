@@ -1,18 +1,13 @@
 ﻿using BrunoZell.ModelBinding;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Logging;
 using PdfGenerator.Models;
 using PdfGenerator.Services;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
 
 namespace PdfGenerator.Controllers
 {
     [ApiController]
+    [Authorize(Policy = "ApiKeyPolicy")]
     [Route("pdf")]
     public class PdfController : ControllerBase
     {
@@ -27,22 +22,45 @@ namespace PdfGenerator.Controllers
             _logger = logger;
         }
 
-        [HttpPost("fromString")]
-        [Authorize(Policy = "ApiKeyPolicy")]
-        public async Task<IActionResult> GenerateFromString(
-            [ModelBinder(BinderType = typeof(JsonModelBinder))] PdfCustomOptions options, string htmlString)
+        [HttpPost("fromHtmlString")]
+        public async Task<IActionResult> GenerateFromHtmlString(
+            [ModelBinder(BinderType = typeof(JsonModelBinder))] PdfOptions options, [FromForm] string htmlString)
         {
             try
             {
                 if (string.IsNullOrWhiteSpace(htmlString))
                     return BadRequest();
 
-                var pdfFile = await _pdfService.GeneratePdfFromHtmlStringAsync(htmlString, options);
+                var pdfResult = await _pdfService.GeneratePdfFromHtmlStringAsync(htmlString, options);
 
-                Response.Headers.Add("Content-Type", PdfFile.ContentType);
-                Response.Headers.Add("Content-Length", pdfFile.FileSize.ToString());
+                Response.Headers.Add("Content-Type", PdfResult.ContentType);
+                Response.Headers.Add("Content-Length", pdfResult.FileSize.ToString());
 
-                return File(pdfFile.Data, PdfFile.ContentType, pdfFile.FileName);
+                return File(pdfResult.Data, PdfResult.ContentType, pdfResult.FileName);
+            }
+            catch (Exception exception)
+            {
+                _logger.LogError(exception, "En feil har oppstått!");
+
+                return StatusCode(StatusCodes.Status500InternalServerError);
+            }
+        }
+
+        [HttpPost("fromFile")]
+        public async Task<IActionResult> GenerateFromFile(
+            [ModelBinder(BinderType = typeof(JsonModelBinder))] PdfOptions options, IFormFile file)
+        {
+            try
+            {
+                if (file == null)
+                    return BadRequest();
+
+                var pdfResult = await _pdfService.GeneratePdfFromFileAsync(file, options);
+
+                Response.Headers.Add("Content-Type", PdfResult.ContentType);
+                Response.Headers.Add("Content-Length", pdfResult.FileSize.ToString());
+
+                return File(pdfResult.Data, PdfResult.ContentType, pdfResult.FileName);
             }
             catch (Exception exception)
             {
@@ -54,14 +72,14 @@ namespace PdfGenerator.Controllers
 
         [HttpPost("fromFiles")]
         public async Task<IActionResult> GenerateFromFiles(
-            [ModelBinder(BinderType = typeof(JsonModelBinder))] PdfCustomOptions options, List<IFormFile> files)
+            [ModelBinder(BinderType = typeof(JsonModelBinder))] PdfOptions options, List<IFormFile> files)
         {
             try
             {
                 if (!files?.Any() ?? true)
                     return BadRequest();
 
-                var pdfArchive = await _pdfService.GeneratePdfArchiveFromFilesAsync(files, options);
+                var pdfArchive = await _pdfService.GeneratePdfZipFromFilesAsync(files, options);
 
                 Response.Headers.Add("Content-Type", "application/zip");
                 Response.Headers.Add("Content-Length", pdfArchive.Length.ToString());

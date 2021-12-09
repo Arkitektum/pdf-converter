@@ -1,9 +1,4 @@
-﻿using Microsoft.AspNetCore.Http;
-using PuppeteerSharp;
-using System;
-using System.IO;
-using System.Linq;
-using System.Threading.Tasks;
+﻿using PuppeteerSharp;
 
 namespace PdfGenerator.Helpers
 {
