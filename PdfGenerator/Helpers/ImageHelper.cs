@@ -2,7 +2,7 @@
 
 namespace PdfGenerator.Helpers
 {
-    public class ImageHelpers
+    public class ImageHelper
     {
         public static readonly string[] SupportedImageMimeTypes = new[] {
             "image/apng",
@@ -14,23 +14,17 @@ namespace PdfGenerator.Helpers
             "image/webp",
         };
 
-        public static bool IsImage(IFormFile file) => SupportedImageMimeTypes.Contains(file.ContentType);
-
-        public static async Task<string> ConvertImageToBase64StringAsync(IFormFile file)
-        {
-            using var memoryStream = new MemoryStream();
-            await file.OpenReadStream().CopyToAsync(memoryStream);
-            memoryStream.Position = 0;
-
-            return Convert.ToBase64String(memoryStream.ToArray());
-        }
+        public static bool IsImage(string mimeType) => mimeType != null && SupportedImageMimeTypes.Contains(mimeType);
 
         public static async Task SetImageSizeAsync(Page page, PdfOptions pdfOptions)
         {
+            var width = pdfOptions.Width ?? $"{pdfOptions.Format.Width}in";
+            var height = pdfOptions.Height ?? $"{pdfOptions.Format.Height}in";
+
             var cssContent = $@"
                 img {{
-                    width: calc({(pdfOptions.Landscape ? pdfOptions.Height : pdfOptions.Width)} - {pdfOptions.MarginOptions.Left} - {pdfOptions.MarginOptions.Right});
-                    height: calc({(pdfOptions.Landscape ? pdfOptions.Width : pdfOptions.Height)} - {pdfOptions.MarginOptions.Top} - {pdfOptions.MarginOptions.Bottom});
+                    width: calc({(pdfOptions.Landscape ? height : width)} - {pdfOptions.MarginOptions.Left} - {pdfOptions.MarginOptions.Right});
+                    height: calc({(pdfOptions.Landscape ? width : height)} - {pdfOptions.MarginOptions.Top} - {pdfOptions.MarginOptions.Bottom});
                 }}
             ";
 

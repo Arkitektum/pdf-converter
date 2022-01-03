@@ -2,6 +2,7 @@
 {
     public class PdfOptions
     {
+        public string Format { get; set; }
         public string PaperWidth { get; set; }
         public string PaperHeight { get; set; }
         public string MarginTop { get; set; }

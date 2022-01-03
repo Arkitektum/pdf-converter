@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authorization;
+using PdfGenerator.Configuration;
 using PdfGenerator.Security;
 using PdfGenerator.Services;
 using Serilog;
@@ -11,12 +12,15 @@ var configuration = builder.Configuration;
 services.AddControllers();
 
 services.AddEndpointsApiExplorer();
-services.AddSwaggerGen();
 
+services.AddSwaggerGen(options => options.OperationFilter<MultipartOperationFilter>());
+
+services.AddHttpContextAccessor();
 services.AddSingleton<IBrowserProvider, BrowserProvider>();
 services.AddTransient<IHttpContextAccessor, HttpContextAccessor>();
 services.AddTransient<IPdfService, PdfService>();
 services.AddTransient<IAuthorizationHandler, ApiKeyRequirementHandler>();
+services.AddTransient<IMultipartRequestService, MultipartRequestService>();
 
 services.Configure<PdfSettings>(configuration.GetSection(PdfSettings.SectionName));
 
@@ -35,8 +39,7 @@ var apiKey = authenticationConfig.GetSection("ApiKey").Value;
 
 services.AddAuthorization(options =>
 {
-    options.AddPolicy("ApiKeyPolicy",
-        policyBuilder => policyBuilder.AddRequirements(new ApiKeyRequirement(new[] { apiKey })));
+    options.AddPolicy("ApiKeyPolicy", policyBuilder => policyBuilder.AddRequirements(new ApiKeyRequirement(new[] { apiKey })));
 });
 
 Log.Logger = new LoggerConfiguration()
@@ -50,6 +53,11 @@ builder.Logging.AddSerilog(Log.Logger, true);
 var app = builder.Build();
 
 app.UseSwagger();
+
+app.Use(async (context, next) => {
+    context.Request.EnableBuffering();
+    await next();
+});
 
 app.UseSwaggerUI(options =>
 {

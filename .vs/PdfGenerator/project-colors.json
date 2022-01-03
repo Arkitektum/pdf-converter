@@ -5,7 +5,17 @@
       "ProjectGuid": "57d79f38-ca8e-44ac-88d1-5942e5d204dc",
       "DisplayName": "PdfGenerator",
       "ColorIndex": 0
+    },
+    "84d75fed-c294-4d85-98ed-88b514c85e8b": {
+      "ProjectGuid": "84d75fed-c294-4d85-98ed-88b514c85e8b",
+      "DisplayName": "PdfGenerator",
+      "ColorIndex": 1
+    },
+    "a2fe74e1-b743-11d0-ae1a-00a0c90fffc3": {
+      "ProjectGuid": "a2fe74e1-b743-11d0-ae1a-00a0c90fffc3",
+      "DisplayName": "Miscellaneous Files",
+      "ColorIndex": -1
     }
   },
-  "NextColorIndex": 1
+  "NextColorIndex": 2
 }
