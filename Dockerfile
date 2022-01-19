@@ -28,7 +28,7 @@ ADD supervisor.conf /etc/supervisor.conf
 
 ## Installing Calibri font
 RUN apt install -y fontconfig
-ADD Fonts/*.ttf /usr/share/fonts/calibri
+ADD Fonts /usr/share/fonts/calibri
 RUN fc-cache -f -v
 
 ## Installing fonts

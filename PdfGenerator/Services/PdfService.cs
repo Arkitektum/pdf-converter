@@ -92,7 +92,7 @@ namespace PdfGenerator.Services
         private PuppeteerPdfOptions GetPdfOptionsAsync(PdfOptions options)
         {
             var pdfOptions = new PuppeteerPdfOptions
-            {                
+            {  
                 MarginOptions = new MarginOptions
                 {
                     Top = options?.MarginTop ?? _config.MarginTop,
