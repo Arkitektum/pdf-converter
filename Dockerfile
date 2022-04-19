@@ -17,8 +17,13 @@ COPY --from=build /app_output .
 RUN echo "deb http://ftp.debian.org/debian bullseye main contrib" >> /etc/apt/sources.list
 RUN apt update
 
-## Installing Chromium to be run in headless mode
-RUN apt install -y chromium
+## Installing Chromium dependencies
+RUN apt install -y wget unzip libglib2.0-0 libnss3 libxext6 libatk1.0-0 libatk-bridge2.0-0 libcups2 libdrm2 libxkbcommon0 libxcomposite1 libxdamage1 libxfixes3 libxrandr2 libgbm1 libpango-1.0-0 libcairo2 libasound2
+
+## Downloading Chromium 96.0.4664.0 to be run in headless mode
+RUN wget --output-document /tmp/chrome-linux.zip "https://www.googleapis.com/download/storage/v1/b/chromium-browser-snapshots/o/Linux_x64%2F929513%2Fchrome-linux.zip?generation=1633657173061773&alt=media"
+RUN unzip /tmp/chrome-linux.zip -d /usr/local
+RUN rm /tmp/chrome-linux.zip
 
 ## Installing tool for process management
 RUN apt install -y supervisor
@@ -37,5 +42,5 @@ RUN fc-cache -f -v
 # Verdana (Bold, Italic, Bold Italic), Webdings
 RUN apt install -y ttf-mscorefonts-installer fonts-crosextra-carlito fonts-crosextra-caladea
 
-# Launching Supervisor as the default command
+## Launching Supervisor as the default command
 CMD ["supervisord", "-c", "/etc/supervisor.conf"]
